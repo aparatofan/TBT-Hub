@@ -16,7 +16,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'TBT_HUB_VERSION', '1.0.0' );
 define( 'TBT_HUB_SLUG', 'tbt-hub' );          // other TBT plugins check for this
-define( 'TBT_OWNER_EMAIL', 'mariuszmirecki@gmail.com' );
 
 /* -------------------------------------------------------------------------
  * Owner-only capability
@@ -24,26 +23,47 @@ define( 'TBT_OWNER_EMAIL', 'mariuszmirecki@gmail.com' );
  * Grants a virtual `tbt_owner` capability to the owner account and strips it
  * from everyone else. Nothing is written to the database, so this cannot be
  * corrupted by role-editing plugins and cannot lock you out.
+ *
+ * This block is guarded and kept byte-for-byte identical to the copy in TBT
+ * Register (mm-register.php). Either plugin can define it standalone —
+ * whichever loads first wins — so Register keeps enforcing owner-only access
+ * even when TBT Hub is deactivated.
  * ---------------------------------------------------------------------- */
 
-add_filter( 'user_has_cap', 'tbt_hub_grant_owner_cap', 10, 4 );
-function tbt_hub_grant_owner_cap( $allcaps, $caps, $args, $user ) {
-	$email = isset( $user->user_email ) ? strtolower( $user->user_email ) : '';
-
-	if ( $email && $email === strtolower( TBT_OWNER_EMAIL ) ) {
-		$allcaps['tbt_owner'] = true;
-	} else {
-		unset( $allcaps['tbt_owner'] );
-	}
-
-	return $allcaps;
+if ( ! defined( 'TBT_OWNER_EMAIL' ) ) {
+	define( 'TBT_OWNER_EMAIL', 'mariuszmirecki@gmail.com' );
 }
 
-/**
- * Convenience wrapper for use inside TBT plugins (menus, AJAX, REST).
- */
-function tbt_is_owner() {
-	return current_user_can( 'tbt_owner' );
+if ( ! function_exists( 'tbt_is_owner' ) ) {
+	/**
+	 * Grant a virtual `tbt_owner` capability to the owner account and strip it
+	 * from everyone else.
+	 *
+	 * @param array   $allcaps All capabilities of the user.
+	 * @param array   $caps    Required capabilities being checked.
+	 * @param array   $args    Arguments passed to the check.
+	 * @param WP_User $user    The user object.
+	 * @return array
+	 */
+	function tbt_hub_grant_owner_cap( $allcaps, $caps, $args, $user ) {
+		$email = isset( $user->user_email ) ? strtolower( $user->user_email ) : '';
+
+		if ( $email && $email === strtolower( TBT_OWNER_EMAIL ) ) {
+			$allcaps['tbt_owner'] = true;
+		} else {
+			unset( $allcaps['tbt_owner'] );
+		}
+
+		return $allcaps;
+	}
+	add_filter( 'user_has_cap', 'tbt_hub_grant_owner_cap', 10, 4 );
+
+	/**
+	 * Convenience wrapper for use inside TBT plugins (menus, AJAX, REST).
+	 */
+	function tbt_is_owner() {
+		return current_user_can( 'tbt_owner' );
+	}
 }
 
 /* -------------------------------------------------------------------------
@@ -55,10 +75,15 @@ function tbt_is_owner() {
 
 add_action( 'admin_menu', 'tbt_hub_register_menu', 9 );
 function tbt_hub_register_menu() {
+	// The parent menu deliberately uses `edit_posts`, not `manage_options`:
+	// WordPress hides a parent menu from anyone who lacks the parent's own
+	// capability, so a `manage_options` parent would hide the editor-level
+	// tools (TBT Comprehension / TBT Tooltip) from any future editor account.
+	// Each submenu still carries and enforces its own capability.
 	add_menu_page(
 		'TBT',
 		'TBT',
-		'manage_options',
+		'edit_posts',
 		TBT_HUB_SLUG,
 		'tbt_hub_render_page',
 		'dashicons-welcome-learn-more',
@@ -71,7 +96,7 @@ function tbt_hub_register_menu() {
 		TBT_HUB_SLUG,
 		'TBT Overview',
 		'Overview',
-		'manage_options',
+		'edit_posts',
 		TBT_HUB_SLUG,
 		'tbt_hub_render_page'
 	);
@@ -93,7 +118,10 @@ function tbt_hub_order_submenu() {
 		return;
 	}
 
-	$pinned = array( TBT_HUB_SLUG, 'tbt-register' );
+	// TBT Register keeps its own top-level menu, but if its slug ever appears
+	// among the hub's submenus it should still pin to the top. Its real menu
+	// slug is `mmr-calendar`.
+	$pinned = array( TBT_HUB_SLUG, 'mmr-calendar' );
 
 	usort(
 		$submenu[ TBT_HUB_SLUG ],
@@ -148,10 +176,11 @@ function tbt_hub_get_items() {
 	usort(
 		$items,
 		function ( $a, $b ) {
-			if ( 'tbt-register' === $a['slug'] ) {
+			// TBT Register (menu slug `mmr-calendar`) is always listed first.
+			if ( 'mmr-calendar' === $a['slug'] ) {
 				return -1;
 			}
-			if ( 'tbt-register' === $b['slug'] ) {
+			if ( 'mmr-calendar' === $b['slug'] ) {
 				return 1;
 			}
 			return strcasecmp( $a['title'], $b['title'] );
@@ -166,7 +195,7 @@ function tbt_hub_get_items() {
  * ---------------------------------------------------------------------- */
 
 function tbt_hub_render_page() {
-	if ( ! current_user_can( 'manage_options' ) ) {
+	if ( ! current_user_can( 'edit_posts' ) ) {
 		wp_die( esc_html__( 'You do not have permission to view this page.' ) );
 	}
 
@@ -184,10 +213,18 @@ function tbt_hub_render_page() {
 			</div>
 		<?php else : ?>
 			<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
-				<?php foreach ( $items as $item ) : ?>
+				<?php
+				foreach ( $items as $item ) :
+					// A plugin may supply an explicit `url` (e.g. a custom post
+					// type list at edit.php?post_type=…). Otherwise the card
+					// links to the standard admin.php?page={slug} route.
+					$item_url = ! empty( $item['url'] )
+						? $item['url']
+						: admin_url( 'admin.php?page=' . $item['slug'] );
+					?>
 					<div class="card" style="margin:0;padding:16px;max-width:none;">
 						<h2 style="margin-top:0;font-size:16px;">
-							<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $item['slug'] ) ); ?>">
+							<a href="<?php echo esc_url( $item_url ); ?>">
 								<?php echo esc_html( $item['title'] ); ?>
 							</a>
 						</h2>
