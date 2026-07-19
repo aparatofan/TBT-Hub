@@ -20,7 +20,7 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftps
           server-dir: /tbt-hub/
-          dry-run: true
+          dry-run: false
           timeout: 120000
           exclude: |
             **/.git*
