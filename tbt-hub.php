@@ -1,8 +1,9 @@
 <?php
 /**
  * Plugin Name: TBT Hub
- * Description: Central admin menu and index page for all TBT plugins.
- * Version:     1.0.0
+ * Description: Central admin menu and index page for all TBT plugins, and the
+ *              canonical source of the shared TBT design system.
+ * Version:     1.1.0
  * Author:      Mariusz Mirecki
  */
 
@@ -14,8 +15,69 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Constants
  * ---------------------------------------------------------------------- */
 
-define( 'TBT_HUB_VERSION', '1.0.0' );
+define( 'TBT_HUB_VERSION', '1.1.0' );
 define( 'TBT_HUB_SLUG', 'tbt-hub' );          // other TBT plugins check for this
+define( 'TBT_HUB_URL', plugin_dir_url( __FILE__ ) );
+define( 'TBT_HUB_DIR', plugin_dir_path( __FILE__ ) );
+
+/* -------------------------------------------------------------------------
+ * Shared design system
+ *
+ * TBT-Hub owns the handles `tbt-tokens` and `tbt-components`. This is the
+ * single source of truth: every other TBT plugin declares one of these as a
+ * dependency rather than shipping its own copy of the vocabulary.
+ *
+ * Registered, never enqueued. A handle that is registered but not enqueued
+ * costs nothing on a page that does not ask for it, so the design system
+ * reaches exactly the pages a tool actually renders on and no others.
+ * Enqueuing here instead would put the tokens on every page of the site.
+ *
+ * Priority 5 because consumers register and enqueue on the default priority
+ * of 10 and must find these handles already present — a plugin that looks
+ * first and finds nothing falls back to its own bundled copy, which is the
+ * drift this ownership rule exists to prevent. See README.md.
+ * ---------------------------------------------------------------------- */
+
+add_action( 'wp_enqueue_scripts', 'tbt_hub_register_shared_styles', 5 );
+
+/**
+ * Register the canonical token and component stylesheets.
+ *
+ * @return void
+ */
+function tbt_hub_register_shared_styles() {
+	wp_register_style(
+		'tbt-tokens',
+		TBT_HUB_URL . 'assets/css/tbt-tokens.css',
+		array(),
+		tbt_hub_asset_version( 'assets/css/tbt-tokens.css' )
+	);
+
+	// Components read the tokens, so the dependency is declared rather than
+	// left to whatever order the consuming plugin happens to enqueue in.
+	wp_register_style(
+		'tbt-components',
+		TBT_HUB_URL . 'assets/css/tbt-components.css',
+		array( 'tbt-tokens' ),
+		tbt_hub_asset_version( 'assets/css/tbt-components.css' )
+	);
+}
+
+/**
+ * Cache-busting version for a bundled asset.
+ *
+ * Uses the file's modification time so an edited stylesheet reaches browsers
+ * even when TBT_HUB_VERSION was not bumped, and falls back to the plugin
+ * version when the file cannot be stat'd.
+ *
+ * @param string $relative_path Path relative to the plugin directory.
+ * @return string
+ */
+function tbt_hub_asset_version( $relative_path ) {
+	$mtime = @filemtime( TBT_HUB_DIR . $relative_path );
+
+	return $mtime ? (string) $mtime : TBT_HUB_VERSION;
+}
 
 /* -------------------------------------------------------------------------
  * Owner-only capability
