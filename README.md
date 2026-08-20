@@ -10,18 +10,23 @@ filter, so the index always reflects what is actually installed and active.
 
 ## The shared design system
 
-TBT Hub owns two stylesheet handles:
+TBT Hub owns three stylesheet handles:
 
 | Handle | File | Depends on |
 |---|---|---|
 | `tbt-tokens` | `assets/css/tbt-tokens.css` | — |
 | `tbt-components` | `assets/css/tbt-components.css` | `tbt-tokens` |
+| `tbt-tree` | `assets/css/tbt-tree.css` | `tbt-tokens` |
 
-Both are **registered, never enqueued**, on `wp_enqueue_scripts` at **priority
-5**. A registered handle costs nothing on a page that does not ask for it, so
-the design system reaches exactly the pages a tool renders on. Priority 5 is
-what lets consumers on the default priority of 10 find the handles already
-present.
+`tbt-tree` is deliberately not folded into `tbt-components`: a page that wants
+the mark rarely wants the whole component library. It reads `--tbt-blue` for
+the leaf stroke, which is why it depends on the tokens.
+
+All three are **registered, never enqueued**, on `wp_enqueue_scripts` at
+**priority 5**. A registered handle costs nothing on a page that does not ask
+for it, so the design system reaches exactly the pages a tool renders on.
+Priority 5 is what lets consumers on the default priority of 10 find the
+handles already present.
 
 ### Who consumes them
 
@@ -37,6 +42,42 @@ Keep this table current. It is what makes the blast radius of an edit to
 TBT Swipe is deliberately outside this system. It is isolated behind its own
 handle and cannot be affected by a change here. Migrating it is a separate
 piece of work with open design questions.
+
+---
+
+## The tree mark
+
+The animated TBT tree is inlined by the `[tbt_tree]` shortcode, so the Divi
+header row and any plugin hero render one mark from one source instead of a
+pasted copy per surface.
+
+```
+[tbt_tree]                             190px, blooms on load
+[tbt_tree width="240px"]               wider
+[tbt_tree animate="no"]                settled tree, no bloom
+[tbt_tree class="tbtmg-hero__mark"]    extra host class
+```
+
+The shortcode enqueues `tbt-tree` itself and emits
+`<span class="tbt-tree-host …"><svg class="tbt-tree" …>`. The SVG carries no
+ids, so two marks on one page stay valid markup. The bloom is pure CSS: each
+leaf carries a baked `--tbt-tree-wave` index, six waves centre outward, so
+there is no script to load and no flash of an unstyled mark.
+
+**Maintenance.** `assets/img/tbt-tree.svg` is a transformed export, not a raw
+one. If the tree is re-exported from Illustrator, two steps must be re-applied
+or the mark renders unstyled and unanimated:
+
+1. Rename the export's `.cls-N` classes to the semantic ones
+   `tbt-tree__leaf` (`--89` / `--81` for the two translucent variants),
+   `tbt-tree__figure--le` / `--gi` / `--pd`, plus `tbt-tree__eo` on the
+   `fill-rule: evenodd` paths — and strip the `<defs><style>` block, whose
+   rules are document-scoped when inlined and now live in `tbt-tree.css`.
+2. Re-bake `style="--tbt-tree-wave:N"` onto each leaf from its bounding-box
+   distance to the canopy centre (250.2, 156.9), bucketed into six waves.
+
+Every `id` and `data-name` is stripped as well; nothing in the file references
+them.
 
 ---
 

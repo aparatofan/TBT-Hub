@@ -3,7 +3,7 @@
  * Plugin Name: TBT Hub
  * Description: Central admin menu and index page for all TBT plugins, and the
  *              canonical source of the shared TBT design system.
- * Version:     1.1.0
+ * Version:     1.2.0
  * Author:      Mariusz Mirecki
  */
 
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Constants
  * ---------------------------------------------------------------------- */
 
-define( 'TBT_HUB_VERSION', '1.1.0' );
+define( 'TBT_HUB_VERSION', '1.2.0' );
 define( 'TBT_HUB_SLUG', 'tbt-hub' );          // other TBT plugins check for this
 define( 'TBT_HUB_URL', plugin_dir_url( __FILE__ ) );
 define( 'TBT_HUB_DIR', plugin_dir_path( __FILE__ ) );
@@ -61,6 +61,16 @@ function tbt_hub_register_shared_styles() {
 		array( 'tbt-tokens' ),
 		tbt_hub_asset_version( 'assets/css/tbt-components.css' )
 	);
+
+	// The tree mark. Reads --tbt-blue for the leaf stroke, so it depends on
+	// the tokens; it is deliberately NOT part of tbt-components, because a
+	// page that wants the mark rarely wants the whole component library.
+	wp_register_style(
+		'tbt-tree',
+		TBT_HUB_URL . 'assets/css/tbt-tree.css',
+		array( 'tbt-tokens' ),
+		tbt_hub_asset_version( 'assets/css/tbt-tree.css' )
+	);
 }
 
 /**
@@ -77,6 +87,98 @@ function tbt_hub_asset_version( $relative_path ) {
 	$mtime = @filemtime( TBT_HUB_DIR . $relative_path );
 
 	return $mtime ? (string) $mtime : TBT_HUB_VERSION;
+}
+
+/* -------------------------------------------------------------------------
+ * The tree mark — [tbt_tree]
+ *
+ * One source for the animated TBT tree, used by the Divi header row and by
+ * any plugin that renders its own hero. Before this existed the mark was
+ * pasted into a Divi Code Module and would have had to be pasted again into
+ * every plugin template that wanted it.
+ *
+ * The SVG is inlined rather than referenced with <img> because the bloom
+ * animates individual leaves, which is impossible across an <img> boundary.
+ *
+ * The bloom is pure CSS. Each leaf carries a baked `--tbt-tree-wave` index,
+ * computed once from the geometry, so there is no script to load, nothing to
+ * fail, and no flash of an unstyled mark.
+ * ---------------------------------------------------------------------- */
+
+add_shortcode( 'tbt_tree', 'tbt_hub_tree_shortcode' );
+
+/**
+ * Render the TBT tree mark.
+ *
+ * Attributes:
+ *   width   CSS length for the rendered mark. Default 190px.
+ *   animate 'yes' (default) blooms on load; 'no' renders the settled tree.
+ *   class   Extra classes for the host element.
+ *
+ * @param array|string $atts Shortcode attributes.
+ * @return string
+ */
+function tbt_hub_tree_shortcode( $atts ) {
+	$atts = shortcode_atts(
+		array(
+			'width'   => '190px',
+			'animate' => 'yes',
+			'class'   => '',
+		),
+		$atts,
+		'tbt_tree'
+	);
+
+	$svg = tbt_hub_tree_svg();
+
+	if ( '' === $svg ) {
+		return '';
+	}
+
+	wp_enqueue_style( 'tbt-tree' );
+
+	$classes = array( 'tbt-tree-host' );
+
+	if ( 'no' !== strtolower( (string) $atts['animate'] ) ) {
+		$classes[] = 'tbt-tree-host--animate';
+	}
+
+	if ( '' !== trim( (string) $atts['class'] ) ) {
+		$classes[] = sanitize_html_class( trim( (string) $atts['class'] ) );
+	}
+
+	// safecss_filter_attr() rejects anything that is not a plain declaration,
+	// so a width attribute cannot smuggle markup or a url() into the page.
+	$style = safecss_filter_attr( 'width:' . $atts['width'] );
+
+	return sprintf(
+		'<span class="%1$s"%2$s>%3$s</span>',
+		esc_attr( implode( ' ', $classes ) ),
+		$style ? ' style="' . esc_attr( $style ) . '"' : '',
+		$svg
+	);
+}
+
+/**
+ * The tree SVG source, read once per request.
+ *
+ * The file is a trusted asset bundled with this plugin, so it is emitted as
+ * written. It carries no ids — a page may render the mark more than once (two
+ * games embedded in one lesson) and duplicate ids would be invalid markup.
+ *
+ * @return string SVG source, or an empty string if the asset is missing.
+ */
+function tbt_hub_tree_svg() {
+	static $svg = null;
+
+	if ( null !== $svg ) {
+		return $svg;
+	}
+
+	$path = TBT_HUB_DIR . 'assets/img/tbt-tree.svg';
+	$svg  = is_readable( $path ) ? (string) file_get_contents( $path ) : '';
+
+	return $svg;
 }
 
 /* -------------------------------------------------------------------------
