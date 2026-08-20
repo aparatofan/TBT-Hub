@@ -97,7 +97,26 @@
 	animation-delay: calc(var(--tbt-tree-wave, 0) * var(--tbt-tree-step));
 }
 
+/* A second animation name makes pointer entry a true replay. The completed
+   entrance bloom remains as the first animation, so leaving the mark does not
+   trigger another bloom. Restrict this to mouse-like pointers: touch devices
+   can otherwise leave :hover stuck after a tap. */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+	.tbt-tree-host--animate:hover .tbt-tree__leaf {
+		animation-name: tbt-tree-bloom, tbt-tree-bloom-hover;
+	}
+}
+
 @keyframes tbt-tree-bloom {
+	0%   { fill: var(--tbt-tree-leaf-start); opacity: 0; transform: scale(.15); }
+	35%  { fill: var(--tbt-tree-leaf-start); opacity: 1; transform: scale(.65); }
+	70%  { fill: var(--tbt-tree-leaf-mid);   opacity: 1; transform: scale(.98); }
+	100% { fill: var(--tbt-tree-leaf-final); opacity: 1; transform: scale(1); }
+}
+
+/* Kept separate from the entrance keyframes so each pointer entry creates a
+   new animation instance. The motion itself remains intentionally identical. */
+@keyframes tbt-tree-bloom-hover {
 	0%   { fill: var(--tbt-tree-leaf-start); opacity: 0; transform: scale(.15); }
 	35%  { fill: var(--tbt-tree-leaf-start); opacity: 1; transform: scale(.65); }
 	70%  { fill: var(--tbt-tree-leaf-mid);   opacity: 1; transform: scale(.98); }
