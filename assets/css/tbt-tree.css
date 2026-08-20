@@ -1,0 +1,89 @@
+/**
+ * TBT tree logo — the canonical mark, and its bloom.
+ *
+ * Owned by TBT Hub under the handle `tbt-tree`. Consumers declare the handle
+ * as a dependency; they never ship their own copy of the mark.
+ *
+ * The fill rules below used to live in a <style> block inside the SVG file.
+ * An inline SVG's <style> is document-scoped rather than shadowed, so those
+ * rules applied to the whole page and any second Illustrator export sharing
+ * the `.cls-N` naming would have fought with them. They live here, scoped
+ * under `.tbt-tree`, for that reason — and the SVG's classes were renamed to
+ * semantic ones so this file never references an export artefact.
+ *
+ * `--tbt-blue` comes from the `tbt-tokens` handle, declared as a dependency.
+ * The fallback is present because the mark must never lose its leaf stroke.
+ */
+
+/* -------------------------------------------------------------------------
+ * Host and mark
+ * ---------------------------------------------------------------------- */
+
+.tbt-tree-host {
+	display: inline-block;
+	line-height: 0;          /* no descender gap under an inline-block SVG */
+	flex: none;              /* the mark never shrinks inside a flex/grid hero */
+}
+
+.tbt-tree {
+	display: block;
+	width: 100%;
+	height: auto;
+	overflow: visible;       /* leaves scale past the viewBox mid-bloom */
+}
+
+/* -------------------------------------------------------------------------
+ * The mark itself
+ *
+ * The three figures forming the trunk carry the three TBT domain colours.
+ * They are identity, not state, so they are not tokenised as interaction
+ * colours — see Style Book §2.
+ * ---------------------------------------------------------------------- */
+
+.tbt-tree__eo            { fill-rule: evenodd; }
+
+.tbt-tree__figure--le    { fill: rgba(99, 16, 17, .99); }    /* Learn English */
+.tbt-tree__figure--gi    { fill: rgba(101, 35, 101, .99); }  /* General Interest */
+.tbt-tree__figure--pd    { fill: rgba(25, 103, 53, .99); }   /* Personal Development */
+
+.tbt-tree__leaf {
+	fill: #FFFFFF;
+	stroke: var(--tbt-blue, #0856C9);
+	stroke-miterlimit: 10;
+	stroke-width: .5px;
+}
+.tbt-tree__leaf--89      { fill: rgba(255, 255, 255, .89); }
+.tbt-tree__leaf--81      { fill: rgba(255, 255, 255, .81); }
+
+/* -------------------------------------------------------------------------
+ * Bloom
+ *
+ * Six waves, centre outward. The wave index is baked into each leaf as
+ * `--tbt-tree-wave` at build time, because the geometry is static — which is
+ * why this needs no JavaScript at all. A leaf keeps its own fill throughout;
+ * only scale and opacity animate.
+ *
+ * Leaves are hidden only under `.tbt-tree-host--animate`, which the shortcode
+ * adds when animation is asked for. If the stylesheet fails to load, the tree
+ * renders plainly rather than disappearing.
+ * ---------------------------------------------------------------------- */
+
+.tbt-tree-host--animate .tbt-tree__leaf {
+	transform-box: fill-box;
+	transform-origin: center;
+	animation: tbt-tree-bloom var(--tbt-tree-duration, 1500ms) cubic-bezier(.2, .7, .3, 1) both;
+	animation-delay: calc(var(--tbt-tree-wave, 0) * var(--tbt-tree-step, 260ms));
+}
+
+@keyframes tbt-tree-bloom {
+	from { opacity: 0; transform: scale(.2); }
+	60%  { opacity: 1; transform: scale(1.06); }
+	to   { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.tbt-tree-host--animate .tbt-tree__leaf {
+		animation: none;
+		opacity: 1;
+	}
+}
