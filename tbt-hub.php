@@ -3,7 +3,7 @@
  * Plugin Name: TBT Hub
  * Description: Central admin menu and index page for all TBT plugins, and the
  *              canonical source of the shared TBT design system.
- * Version:     1.2.0
+ * Version:     1.3.0
  * Author:      Mariusz Mirecki
  */
 
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Constants
  * ---------------------------------------------------------------------- */
 
-define( 'TBT_HUB_VERSION', '1.2.0' );
+define( 'TBT_HUB_VERSION', '1.3.0' );
 define( 'TBT_HUB_SLUG', 'tbt-hub' );          // other TBT plugins check for this
 define( 'TBT_HUB_URL', plugin_dir_url( __FILE__ ) );
 define( 'TBT_HUB_DIR', plugin_dir_path( __FILE__ ) );
@@ -41,7 +41,8 @@ define( 'TBT_HUB_DIR', plugin_dir_path( __FILE__ ) );
 add_action( 'wp_enqueue_scripts', 'tbt_hub_register_shared_styles', 5 );
 
 /**
- * Register the canonical token and component stylesheets.
+ * Register the canonical token and component stylesheets, plus the standalone
+ * `tbt-tree` and `tbt-rail` handles.
  *
  * @return void
  */
@@ -70,6 +71,17 @@ function tbt_hub_register_shared_styles() {
 		TBT_HUB_URL . 'assets/css/tbt-tree.css',
 		array( 'tbt-tokens' ),
 		tbt_hub_asset_version( 'assets/css/tbt-tree.css' )
+	);
+
+	// The shared navigation rail. Like the tree, deliberately NOT part of
+	// tbt-components: a page that renders a rail rarely wants the whole
+	// component library, and TBT Swipe consumes neither. Its fallbacks make it
+	// safe to enqueue without tbt-tokens, so the dependency array is empty.
+	wp_register_style(
+		'tbt-rail',
+		TBT_HUB_URL . 'assets/css/tbt-rail.css',
+		array(),
+		tbt_hub_asset_version( 'assets/css/tbt-rail.css' )
 	);
 }
 

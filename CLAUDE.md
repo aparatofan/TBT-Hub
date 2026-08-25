@@ -22,6 +22,7 @@ Keep this file concise. It is loaded at the start of every Claude Code session.
 - Register those handles; do not globally enqueue them from Hub.
 - Registration happens early (`wp_enqueue_scripts` priority 5) so consumers can find the canonical handles before deciding whether to use a fallback.
 - `tbt-components` depends on `tbt-tokens`.
+- Hub also owns the standalone handles `tbt-tree` and `tbt-rail`. These are registered separately from `tbt-components` and are enqueued by consumers on demand. `tbt-rail.css` carries literal fallbacks for every custom property so it renders in plugins that do not load `tbt-tokens`; do not remove them.
 - Consumer plugins may vendor fallback copies, but those copies must remain byte-identical to the Hub originals and register under the same handle only when Hub has not already registered it.
 - Never create a second shared handle pointing at a divergent token vocabulary.
 - Add a shared token/component only for a recurring suite-wide need, not to solve one isolated screen.

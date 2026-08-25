@@ -1,0 +1,213 @@
+/**
+ * TBT Rail — shared left navigation column.
+ *
+ * Owned by TBT Hub. Registered under the handle `tbt-rail`, never enqueued
+ * globally; a consuming plugin enqueues it from its own shortcode callback.
+ *
+ * Every custom property carries a literal fallback so the component renders
+ * correctly in a plugin that does not load `tbt-tokens.css`. The fallbacks are
+ * copies of the canonical Style Book values, not approximations.
+ *
+ * Extracted from the page-mode rail in TBT Notes, which was already written in
+ * canonical tokens. Notes is not migrated by this release.
+ */
+
+.tbt-rail {
+	--tbt-rail-width: 240px;
+
+	flex: 0 0 var(--tbt-rail-width);
+	width: var(--tbt-rail-width);
+	box-sizing: border-box;
+	padding: var(--tbt-s4, 16px) var(--tbt-s3, 12px);
+	border-right: 1px solid var(--tbt-border, #D8E3F0);
+	background: var(--tbt-surface, #FFFFFF);
+	overflow-y: auto;
+	font-family: var(--tbt-font-ui, "Roboto", sans-serif);
+}
+
+/* --------------------------------------------------------------- Head */
+
+.tbt-rail__head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--tbt-s2, 8px);
+	margin-bottom: var(--tbt-s4, 16px);
+}
+
+/* Roboto, not Slab: a rail label names a destination, it is not learning
+   content. Style Book §3. */
+.tbt-rail__title {
+	margin: 0;
+	font-family: var(--tbt-font-ui, "Roboto", sans-serif);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: .06em;
+	text-transform: uppercase;
+	color: var(--tbt-muted, #667085);
+}
+
+/* --------------------------------------------------------------- List */
+
+.tbt-rail__list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--tbt-s2, 8px);
+}
+
+/* A divider between sections of the rail. Margin only above, so it never adds
+   space at the top of the list. */
+.tbt-rail__group {
+	margin: var(--tbt-s4, 16px) 0 var(--tbt-s2, 8px);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: .06em;
+	text-transform: uppercase;
+	color: var(--tbt-muted, #667085);
+}
+
+.tbt-rail__list .tbt-rail__group:first-child {
+	margin-top: 0;
+}
+
+/* --------------------------------------------------------------- Item */
+
+/* The row shell. Holds the link plus any trailing control the consumer adds;
+   the shell owns the border so a trailing control sits inside it. */
+.tbt-rail__item {
+	display: flex;
+	align-items: center;
+	gap: var(--tbt-s2, 8px);
+	border: 1px solid var(--tbt-border, #D8E3F0);
+	border-radius: var(--tbt-radius-control, 12px);
+	background: var(--tbt-surface, #FFFFFF);
+	transition:
+		background-color .18s var(--tbt-ease, ease),
+		border-color .18s var(--tbt-ease, ease);
+}
+
+.tbt-rail__item:hover {
+	border-color: var(--tbt-blue, #0856C9);
+	background: var(--tbt-selected-bg, #EDF4FF);
+}
+
+/* Works as <a> or <button>; both are reset to the same box. */
+.tbt-rail__link {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--tbt-s2, 8px);
+	padding: var(--tbt-s3, 12px) var(--tbt-s4, 16px);
+	border: 0;
+	border-radius: var(--tbt-radius-control, 12px);
+	background: transparent;
+	font: inherit;
+	font-size: 15px;
+	font-weight: 400;
+	text-align: left;
+	text-decoration: none;
+	color: var(--tbt-ink, #1F2937);
+	cursor: pointer;
+}
+
+.tbt-rail__label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Selected is blue, never green — Style Book §8. The left edge is an inset
+   shadow rather than a border so selecting a row never nudges its text. */
+.tbt-rail__link.is-active {
+	background: var(--tbt-selected-bg, #EDF4FF);
+	box-shadow: inset 3px 0 0 var(--tbt-blue, #0856C9);
+	font-weight: 600;
+}
+
+.tbt-rail__link:focus-visible {
+	outline: none;
+	box-shadow: var(--tbt-focus-ring, 0 0 0 3px rgba(8, 86, 201, .18));
+}
+
+.tbt-rail__link.is-active:focus-visible {
+	box-shadow:
+		inset 3px 0 0 var(--tbt-blue, #0856C9),
+		var(--tbt-focus-ring, 0 0 0 3px rgba(8, 86, 201, .18));
+}
+
+/* --------------------------------------------------------------- Count */
+
+.tbt-rail__count {
+	flex: 0 0 auto;
+	min-width: 20px;
+	padding: 2px 6px;
+	border-radius: 999px;
+	background: var(--tbt-canvas, #F6F8FC);
+	font-size: 12px;
+	font-weight: 700;
+	line-height: 1.4;
+	text-align: center;
+	color: var(--tbt-muted, #667085);
+}
+
+.tbt-rail__link.is-active .tbt-rail__count {
+	background: var(--tbt-surface, #FFFFFF);
+	color: var(--tbt-blue, #0856C9);
+}
+
+/* --------------------------------------------------------------- Trail */
+
+/* An empty slot for a consumer's trailing control (a delete button, a menu).
+   Hub reserves the position and the spacing only; the control's own appearance
+   belongs to the plugin that adds it. This exists so TBT Notes can migrate its
+   lesson rows onto this component later without the shell having to change. */
+.tbt-rail__trail {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	padding-right: var(--tbt-s2, 8px);
+}
+
+/* ----------------------------------------------------------- Narrow */
+
+/* Desktop-first per Style Book §10. Below this the rail becomes a horizontal
+   strip rather than disappearing, so its destinations stay reachable. */
+@media (max-width: 782px) {
+	.tbt-rail {
+		flex: 1 1 auto;
+		width: 100%;
+		border-right: 0;
+		border-bottom: 1px solid var(--tbt-border, #D8E3F0);
+		overflow-x: auto;
+		overflow-y: visible;
+	}
+
+	.tbt-rail__list {
+		flex-direction: row;
+		flex-wrap: nowrap;
+	}
+
+	.tbt-rail__item {
+		flex: 0 0 auto;
+	}
+
+	.tbt-rail__group {
+		display: none;
+	}
+
+	/* The inset left rule reads as an underline in a horizontal strip. */
+	.tbt-rail__link.is-active {
+		box-shadow: inset 0 -3px 0 var(--tbt-blue, #0856C9);
+	}
+
+	.tbt-rail__link.is-active:focus-visible {
+		box-shadow:
+			inset 0 -3px 0 var(--tbt-blue, #0856C9),
+			var(--tbt-focus-ring, 0 0 0 3px rgba(8, 86, 201, .18));
+	}
+}

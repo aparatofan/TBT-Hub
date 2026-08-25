@@ -10,19 +10,25 @@ filter, so the index always reflects what is actually installed and active.
 
 ## The shared design system
 
-TBT Hub owns three stylesheet handles:
+TBT Hub owns four stylesheet handles:
 
 | Handle | File | Depends on |
 |---|---|---|
 | `tbt-tokens` | `assets/css/tbt-tokens.css` | — |
 | `tbt-components` | `assets/css/tbt-components.css` | `tbt-tokens` |
 | `tbt-tree` | `assets/css/tbt-tree.css` | `tbt-tokens` |
+| `tbt-rail` | `assets/css/tbt-rail.css` | — *(deliberate — see below)* |
 
 `tbt-tree` is deliberately not folded into `tbt-components`: a page that wants
 the mark rarely wants the whole component library. It reads `--tbt-blue` for
 the leaf stroke, which is why it depends on the tokens.
 
-All three are **registered, never enqueued**, on `wp_enqueue_scripts` at
+`tbt-rail` follows the same precedent for the same reason, and goes one step
+further: it declares **no** dependency, because every custom property in it
+carries a literal fallback and it is meant to render in a plugin that does not
+load `tbt-tokens`. See [The navigation rail](#the-navigation-rail).
+
+All four are **registered, never enqueued**, on `wp_enqueue_scripts` at
 **priority 5**. A registered handle costs nothing on a page that does not ask
 for it, so the design system reaches exactly the pages a tool renders on.
 Priority 5 is what lets consumers on the default priority of 10 find the
@@ -78,6 +84,54 @@ or the mark renders unstyled and unanimated:
 
 Every `id` and `data-name` is stripped as well; nothing in the file references
 them.
+
+---
+
+## The navigation rail
+
+`tbt-rail` is the shared left navigation column — the pattern TBT Notes already
+renders in page mode, lifted out so Swipe, Matching Games and later tools do not
+each reimplement it. Hub owns the stylesheet and nothing else: there is no rail
+markup, shortcode, renderer or REST route here.
+
+**Consumers enqueue it themselves.** Hub registers the handle at priority 5 and
+stops there; a plugin calls `wp_enqueue_style( 'tbt-rail' )` from its own
+shortcode callback, so a page that renders no rail never loads the file.
+
+| Class | Role |
+|---|---|
+| `.tbt-rail` | the column itself — width, padding, border, scroll |
+| `.tbt-rail__head` | header row above the list |
+| `.tbt-rail__title` | header label; Roboto, uppercase, muted |
+| `.tbt-rail__group` | a subheading between sections of the list |
+| `.tbt-rail__list` | the `<ul>`; no bullets, `--tbt-s2` gap |
+| `.tbt-rail__item` | row shell; owns the border and the hover state |
+| `.tbt-rail__link` | the `<a>` or `<button>` in the row; add `.is-active` for the current destination |
+| `.tbt-rail__label` | the row's text, truncated with an ellipsis |
+| `.tbt-rail__count` | trailing pill count |
+| `.tbt-rail__trail` | reserved slot for a consumer's trailing control |
+
+`.tbt-rail__trail` is position and spacing only. The appearance of whatever goes
+in it — a delete button, a menu — belongs to the plugin that adds it.
+
+**Width is a component variable, not a fixed value.** `.tbt-rail` defaults
+`--tbt-rail-width` to `240px`, which suits a rail of short destination labels; a
+list of lesson titles wants more. The consumer sets it:
+
+```css
+.my-plugin__rail { --tbt-rail-width: 360px; }
+```
+
+**Every `var()` in `tbt-rail.css` carries a literal fallback, and they must stay
+there:** that is what lets TBT Swipe use the rail without loading `tbt-tokens`
+and without migrating its private vocabulary. Removing them silently breaks
+Swipe. It is also why the handle declares no dependency — naming `tbt-tokens`
+there would force the token file onto Swipe pages, which is exactly what the
+fallbacks exist to avoid. A consumer that *does* use the shared vocabulary
+enqueues `tbt-tokens` itself, as it already does today.
+
+Below 782px the rail becomes a horizontal strip rather than disappearing, so its
+destinations stay reachable; the active row's blue rule moves to the bottom edge.
 
 ---
 
