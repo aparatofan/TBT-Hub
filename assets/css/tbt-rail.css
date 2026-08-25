@@ -85,8 +85,8 @@
 	border-radius: var(--tbt-radius-control, 12px);
 	background: var(--tbt-surface, #FFFFFF);
 	transition:
-		background-color .18s var(--tbt-ease, ease),
-		border-color .18s var(--tbt-ease, ease);
+		background-color .18s var(--tbt-ease, cubic-bezier(.22, .61, .36, 1)),
+		border-color .18s var(--tbt-ease, cubic-bezier(.22, .61, .36, 1));
 }
 
 .tbt-rail__item:hover {
