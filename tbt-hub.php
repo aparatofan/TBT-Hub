@@ -3,7 +3,7 @@
  * Plugin Name: TBT Hub
  * Description: Central admin menu and index page for all TBT plugins, and the
  *              canonical source of the shared TBT design system.
- * Version:     1.3.0
+ * Version:     1.4.0
  * Author:      Mariusz Mirecki
  */
 
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Constants
  * ---------------------------------------------------------------------- */
 
-define( 'TBT_HUB_VERSION', '1.3.0' );
+define( 'TBT_HUB_VERSION', '1.4.0' );
 define( 'TBT_HUB_SLUG', 'tbt-hub' );          // other TBT plugins check for this
 define( 'TBT_HUB_URL', plugin_dir_url( __FILE__ ) );
 define( 'TBT_HUB_DIR', plugin_dir_path( __FILE__ ) );
@@ -239,6 +239,114 @@ if ( ! function_exists( 'tbt_is_owner' ) ) {
 	 */
 	function tbt_is_owner() {
 		return current_user_can( 'tbt_owner' );
+	}
+}
+
+/* -------------------------------------------------------------------------
+ * Shared visibility vocabulary
+ *
+ * TBT Hub owns the words a TBT tool uses to say whether an item is private to
+ * its author or shared with other teachers. Consuming plugins must not define
+ * their own visibility values: two tools that disagree about what "shared"
+ * means cannot be reconciled after the fact, and a school-wide third value is
+ * meant to join these two without any consumer changing a single call. That is
+ * also why the values are strings and not a boolean — a boolean would force a
+ * schema migration in every consuming plugin the day that third value arrives.
+ *
+ * `tbt_can_view_item()` is deliberately pure and storage-agnostic. It takes an
+ * owner ID and a visibility value and answers a question; it never reads a
+ * column, a post meta key, or a global. It has to be that way because
+ * consumers store ownership differently — TBT Swipe keeps decks in custom
+ * tables, TBT Matching Games keeps games as a custom post type with
+ * `post_author` ownership — so each caller loads its own data and passes the
+ * two values in.
+ *
+ * Unknown or missing values resolve to private. Existing Swipe deck rows have
+ * no visibility column and existing Matching Game posts have no such post
+ * meta, so both read as private without a data backfill: failing closed is the
+ * point of the default, not an accident of it.
+ *
+ * A consumer that cannot find these functions must fall back to owner-only
+ * behaviour rather than vendoring a copy. This is deliberately unlike the
+ * owner-only capability block above, which is mirrored in TBT Register:
+ * owner-only access is a security boundary that has to survive TBT Hub being
+ * deactivated, so two copies kept in sync earn their cost there. Visibility is
+ * a convenience feature — without Hub, sharing simply stops working and
+ * everyone still sees their own items — so failing closed to owner-only is
+ * both safe and simpler than a second copy that can drift.
+ *
+ * View only. This answers whether a person may look at an item, never whether
+ * they may edit it, and it is not an access gate: membership and the
+ * administrator "manage all" checks stay upstream in each consuming plugin.
+ * ---------------------------------------------------------------------- */
+
+if ( ! defined( 'TBT_VISIBILITY_PRIVATE' ) ) {
+	define( 'TBT_VISIBILITY_PRIVATE', 'private' );
+}
+
+if ( ! defined( 'TBT_VISIBILITY_SHARED' ) ) {
+	define( 'TBT_VISIBILITY_SHARED', 'shared' );
+}
+
+if ( ! function_exists( 'tbt_normalize_visibility' ) ) {
+	/**
+	 * Reduce any raw stored value to one of the two visibility constants.
+	 *
+	 * Everything that is not an exact match for `shared` — after trimming and
+	 * lowercasing a string input — is private: an empty string, null, an
+	 * unknown word, an array, an integer, a missing database column, an absent
+	 * post meta key.
+	 *
+	 * @param mixed $value Raw value as read from storage.
+	 * @return string TBT_VISIBILITY_SHARED or TBT_VISIBILITY_PRIVATE.
+	 */
+	function tbt_normalize_visibility( $value ) {
+		if ( is_string( $value ) && strtolower( trim( $value ) ) === TBT_VISIBILITY_SHARED ) {
+			return TBT_VISIBILITY_SHARED;
+		}
+
+		return TBT_VISIBILITY_PRIVATE;
+	}
+}
+
+if ( ! function_exists( 'tbt_can_view_item' ) ) {
+	/**
+	 * Answer whether one teacher may view another teacher's item.
+	 *
+	 * Pure: the caller loads the owner and the visibility from wherever it
+	 * stores them and passes both in. No database access, no `get_post`, no
+	 * globals beyond resolving the current user when no viewer is given.
+	 *
+	 * @param int      $owner_id   ID of the user who owns the item.
+	 * @param mixed    $visibility Raw visibility value from storage.
+	 * @param int|null $viewer_id  Viewer's user ID, or null for the current user.
+	 * @return bool
+	 */
+	function tbt_can_view_item( $owner_id, $visibility, $viewer_id = null ) {
+		$owner_id = (int) $owner_id;
+
+		// An unowned item belongs to nobody, so nobody may view it.
+		if ( $owner_id <= 0 ) {
+			return false;
+		}
+
+		if ( null === $viewer_id ) {
+			$viewer_id = get_current_user_id();
+		}
+
+		$viewer_id = (int) $viewer_id;
+
+		// Logged-out visitors see nothing through this helper.
+		if ( $viewer_id <= 0 ) {
+			return false;
+		}
+
+		// Owners always see their own items, whatever the visibility says.
+		if ( $viewer_id === $owner_id ) {
+			return true;
+		}
+
+		return tbt_normalize_visibility( $visibility ) === TBT_VISIBILITY_SHARED;
 	}
 }
 
