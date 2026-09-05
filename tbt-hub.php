@@ -3,7 +3,7 @@
  * Plugin Name: TBT Hub
  * Description: Central admin menu and index page for all TBT plugins, and the
  *              canonical source of the shared TBT design system.
- * Version:     1.4.0
+ * Version:     1.5.0
  * Author:      Mariusz Mirecki
  */
 
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Constants
  * ---------------------------------------------------------------------- */
 
-define( 'TBT_HUB_VERSION', '1.4.0' );
+define( 'TBT_HUB_VERSION', '1.5.0' );
 define( 'TBT_HUB_SLUG', 'tbt-hub' );          // other TBT plugins check for this
 define( 'TBT_HUB_URL', plugin_dir_url( __FILE__ ) );
 define( 'TBT_HUB_DIR', plugin_dir_path( __FILE__ ) );
@@ -348,6 +348,125 @@ if ( ! function_exists( 'tbt_can_view_item' ) ) {
 
 		return tbt_normalize_visibility( $visibility ) === TBT_VISIBILITY_SHARED;
 	}
+}
+
+/* -------------------------------------------------------------------------
+ * Audience
+ *
+ * One place that answers "is this person a teacher?" for the whole TBT suite.
+ * Front-end menu visibility is the first consumer; anything else that needs
+ * the same answer should call this rather than repeating the test.
+ *
+ * The owner is always a teacher, so the menu stays correct even if the
+ * capability below is ever renamed or its owning plugin is deactivated.
+ *
+ * `manage_tbt_notes` is the test because it is the capability teachers have
+ * and students do not. If TBT Notes computes that capability virtually — the
+ * way the owner block above computes `tbt_owner` — then deactivating TBT
+ * Notes would make every teacher except the owner read as a student here.
+ * Should that become a problem, replace the capability check with a Hub-owned
+ * list of teacher user IDs; this function is the only thing that changes.
+ * ---------------------------------------------------------------------- */
+
+if ( ! function_exists( 'tbt_hub_is_teacher' ) ) {
+	/**
+	 * Whether the current user is a TBT teacher.
+	 *
+	 * @return bool
+	 */
+	function tbt_hub_is_teacher() {
+		if ( function_exists( 'tbt_is_owner' ) && tbt_is_owner() ) {
+			return true;
+		}
+
+		return current_user_can( 'manage_tbt_notes' );
+	}
+}
+
+/* -------------------------------------------------------------------------
+ * Front-end menu visibility by role
+ *
+ * "Teacher Tools" and "Student tools" occupy the same slot in the primary
+ * menu and are meant for different audiences. Rather than maintaining two
+ * whole menus and swapping the menu location, each parent item carries a CSS
+ * class in Appearance → Menus and this filter drops whichever one does not
+ * apply, along with its children.
+ *
+ * Tag the parents with:
+ *   tbt-role-teacher   visible to teachers only
+ *   tbt-role-student   visible to logged-in non-teachers only
+ *
+ * Children need no class — removal cascades down the subtree. Items carrying
+ * neither class are never touched, so the rest of the menu is unaffected.
+ *
+ * `wp_nav_menu_objects` runs for every menu on the site, which is why this is
+ * one filter rather than one per location: Divi's mobile menu, the footer and
+ * any future menu all get the same treatment for free.
+ *
+ * Logged-out visitors match neither test, so both items disappear for them.
+ * If a public-facing entry is ever wanted in that slot, leave it untagged.
+ *
+ * Note for page caching: any cache layer must exclude logged-in users, or a
+ * student can be served a teacher's cached menu.
+ * ---------------------------------------------------------------------- */
+
+add_filter( 'wp_nav_menu_objects', 'tbt_hub_filter_menu_by_role', 10, 2 );
+
+/**
+ * Remove role-tagged menu items that do not apply to the current viewer.
+ *
+ * @param array  $items Menu item objects.
+ * @param object $args  wp_nav_menu() arguments.
+ * @return array
+ */
+function tbt_hub_filter_menu_by_role( $items, $args ) {
+	$is_teacher = tbt_hub_is_teacher();
+	$is_student = is_user_logged_in() && ! $is_teacher;
+
+	$remove = array();
+
+	foreach ( $items as $item ) {
+		$classes = (array) $item->classes;
+
+		if ( in_array( 'tbt-role-teacher', $classes, true ) && ! $is_teacher ) {
+			$remove[] = (int) $item->ID;
+		}
+
+		if ( in_array( 'tbt-role-student', $classes, true ) && ! $is_student ) {
+			$remove[] = (int) $item->ID;
+		}
+	}
+
+	// Nothing tagged on this menu, or everything tagged applies: leave the
+	// array untouched rather than rebuilding it.
+	if ( empty( $remove ) ) {
+		return $items;
+	}
+
+	// A removed parent takes its whole subtree with it. The loop repeats until
+	// a pass finds nothing new, so nesting deeper than one level still works
+	// and the order items happen to appear in does not matter.
+	do {
+		$added = false;
+
+		foreach ( $items as $item ) {
+			if ( in_array( (int) $item->menu_item_parent, $remove, true )
+				&& ! in_array( (int) $item->ID, $remove, true ) ) {
+				$remove[] = (int) $item->ID;
+				$added    = true;
+			}
+		}
+	} while ( $added );
+
+	// Reindexed because some menu walkers assume a sequential array.
+	return array_values(
+		array_filter(
+			$items,
+			function ( $item ) use ( $remove ) {
+				return ! in_array( (int) $item->ID, $remove, true );
+			}
+		)
+	);
 }
 
 /* -------------------------------------------------------------------------
