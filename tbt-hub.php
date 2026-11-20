@@ -3,7 +3,7 @@
  * Plugin Name: TBT Hub
  * Description: Central admin menu and index page for all TBT plugins, and the
  *              canonical source of the shared TBT design system.
- * Version:     1.5.0
+ * Version:     1.6.0
  * Author:      Mariusz Mirecki
  */
 
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Constants
  * ---------------------------------------------------------------------- */
 
-define( 'TBT_HUB_VERSION', '1.5.0' );
+define( 'TBT_HUB_VERSION', '1.6.0' );
 define( 'TBT_HUB_SLUG', 'tbt-hub' );          // other TBT plugins check for this
 define( 'TBT_HUB_URL', plugin_dir_url( __FILE__ ) );
 define( 'TBT_HUB_DIR', plugin_dir_path( __FILE__ ) );
