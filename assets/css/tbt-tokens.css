@@ -2,12 +2,15 @@
    THE BLUE TREE — CANONICAL DESIGN TOKENS
    File:    /assets/css/tbt-tokens.css
    Owner:   TBT-Hub  (all other plugins declare this as a dependency)
-   Version: 2.1
+   Version: 2.2
    Status:  LOCKED — do not edit values without a Style Spec version bump.
 
    2.1 is additive only: it adopts the decorative palette that TBT Notes had
    been carrying locally, and names the Style Book §4 spacing scale so that
    plugins can reference it. No existing value changed.
+
+   2.2 is additive only: soft and faint ink, already used by Swipe, Drill and
+   Flashcards, needed by Dictionary.
 
    Every value here is approved. Plugins must NEVER redefine these in a
    local :root block and must NEVER create near-duplicate local colours
@@ -56,6 +59,8 @@
     /* --- Typography Ink --------------------------------------------- */
     --tbt-ink:          #1F2937;
     --tbt-muted:        #667085;
+    --tbt-ink-soft:     #4E6689;  /* phonetics, secondary lines */
+    --tbt-ink-faint:    #8299B8;  /* hints, tags, placeholders  */
 
     /* --- Semantic States -------------------------------------------- */
     --tbt-success:      #16803C;
